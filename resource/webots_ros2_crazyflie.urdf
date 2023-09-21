@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <robot name="Crazyflie Webots">
     <webots>
-        <!-- <device reference="gps" type="GPS">
+        <device reference="gps" type="GPS">
             <ros>
                 <enabled>true</enabled>
                 <alwaysOn>true</alwaysOn>
@@ -10,13 +10,13 @@
 
         <plugin type="webots_ros2_driver::Ros2IMU">
             <enabled>true</enabled>
-            <topicName>/imu</topicName>
+            <topicName>imu</topicName>
             <alwaysOn>true</alwaysOn>
             <frameName>imu_link</frameName>
-            <inertialUnitName>inertial unit</inertialUnitName>
+            <inertialUnitName>inertial_unit</inertialUnitName>
             <gyroName>gyro</gyroName>
-        </plugin> -->
+        </plugin>
 
-        <plugin type="webots_ros2_crazyflie.crazyflie_driver.CrazyflieDriver" />
+        <plugin type="webots_ros2_crazyflie.crazyflie_sil_pid_driver.CrazyflieDriver" />
     </webots>
 </robot>

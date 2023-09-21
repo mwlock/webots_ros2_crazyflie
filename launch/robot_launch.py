@@ -37,7 +37,7 @@ def generate_launch_description():
     )
 
     robot_description_path = os.path.join(package_dir, 'resource', 'webots_ros2_crazyflie.urdf')
-    crazyflie_driver = WebotsController(
+    crazyflie_sil_pid_driver = WebotsController(
         robot_name='Crazyflie_robot',
         parameters=[
             {'robot_description': robot_description_path},
@@ -53,7 +53,7 @@ def generate_launch_description():
         ),
         webots,
         webots._supervisor,
-        crazyflie_driver,
+        crazyflie_sil_pid_driver,
 
         # This action will kill all nodes once the Webots simulation has exited
         launch.actions.RegisterEventHandler(
