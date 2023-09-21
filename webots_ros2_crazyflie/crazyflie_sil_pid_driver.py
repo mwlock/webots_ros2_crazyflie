@@ -34,6 +34,7 @@ class CrazyflieDriver:
         self.m2_motor = self.__robot.getDevice('m2_motor')
         self.m3_motor = self.__robot.getDevice('m3_motor')
         self.m4_motor = self.__robot.getDevice('m4_motor')
+        
         self.__propellers = [
             self.m1_motor,
             self.m2_motor,
@@ -109,6 +110,7 @@ class CrazyflieDriver:
         self.setpoint.velocity.x        = forwardDesired
         self.setpoint.velocity.y        = sidewaysDesired
         self.setpoint.velocity_body     = True
+        self.setpoint.attitude
         
         ## Firmware PID bindings
         firm.controllerPid(
@@ -136,5 +138,3 @@ class CrazyflieDriver:
         self.m2_motor.setVelocity(motorPower_m2/scaling)
         self.m3_motor.setVelocity(-motorPower_m3/scaling)
         self.m4_motor.setVelocity(motorPower_m4/scaling)
-        
-        print("Motor powers: ", motorPower_m1, motorPower_m2, motorPower_m3, motorPower_m4)
