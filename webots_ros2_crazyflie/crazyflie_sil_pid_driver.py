@@ -110,7 +110,6 @@ class CrazyflieDriver:
         self.setpoint.velocity.x        = forwardDesired
         self.setpoint.velocity.y        = sidewaysDesired
         self.setpoint.velocity_body     = True
-        self.setpoint.attitude
         
         ## Firmware PID bindings
         firm.controllerPid(
@@ -138,3 +137,7 @@ class CrazyflieDriver:
         self.m2_motor.setVelocity(motorPower_m2/scaling)
         self.m3_motor.setVelocity(-motorPower_m3/scaling)
         self.m4_motor.setVelocity(motorPower_m4/scaling)
+        
+        #ros info
+        # self.__node.get_logger().info(f" GPS Coordinates frame : {self.__gps.getCoordinateSystem()}")
+        # print(f" GPS Coordinates frame : {self.__gps.getCoordinateSystem()}")

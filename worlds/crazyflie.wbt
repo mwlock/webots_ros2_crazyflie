@@ -24,6 +24,6 @@ TexturedBackgroundLight {
 Floor {
 }
 Crazyflie {
-  name "Crazyflie_robot"
+  name "crazyflie_1"
   controller "<extern>"
 }

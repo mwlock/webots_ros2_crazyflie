@@ -26,6 +26,8 @@ from ament_index_python.packages import get_package_share_directory
 from webots_ros2_driver.webots_launcher import WebotsLauncher
 from webots_ros2_driver.webots_controller import WebotsController
 
+robot_1 = "crazyflie_1"
+
 
 def generate_launch_description():
     package_dir = get_package_share_directory('webots_ros2_crazyflie')
@@ -38,7 +40,7 @@ def generate_launch_description():
 
     robot_description_path = os.path.join(package_dir, 'resource', 'webots_ros2_crazyflie.urdf')
     crazyflie_sil_pid_driver = WebotsController(
-        robot_name='Crazyflie_robot',
+        robot_name=robot_1,
         parameters=[
             {'robot_description': robot_description_path},
         ],
