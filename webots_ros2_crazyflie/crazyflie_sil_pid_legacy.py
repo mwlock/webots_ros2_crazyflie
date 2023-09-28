@@ -59,6 +59,8 @@ class CrazyflieDriver:
         self.control    = firm.control_t()
         self.tick       = 100 #this value makes sure that the position controller and attitude controller are always always initiated
         
+        self.enable_position_control()
+        
         # ROS interface
         rclpy.init(args=None)
         self.__node = rclpy.create_node('crazyflie_sil_pid_legacy')
@@ -85,7 +87,6 @@ class CrazyflieDriver:
         self.hovering_time      = 0
         self.start_mission_time = 0
         self.last_time          = self.__robot.getTime()
-        self.__node.get_logger().info(f"{str(self.__timestep)}")
 
         #roslog info
         self.logger = self.__node.get_logger()
@@ -106,16 +107,20 @@ class CrazyflieDriver:
         
     def cmd_vel_callback(self, msg:Twist):
         
+        self.enable_legacy_control()
+                
         # Roll, pitch, yawrate, thrust
         roll    = msg.linear.x
         pitch   = msg.linear.y
         yawrate = msg.angular.z
-        thrust  = min(max(msg.linear.z,0), 6000)
+        thrust  = min(max(msg.linear.z,0), 60000)
         
         self.setpoint.attitude.roll     = roll
         self.setpoint.attitude.pitch    = pitch
         self.setpoint.attitudeRate.yaw  = yawrate
         self.setpoint.thrust            = thrust
+        
+        self.logger.info(f"Roll: {roll}, Pitch: {pitch}, Yawrate: {yawrate}, Thrust: {thrust}")        
         
     def enable_hovering(self):
         
@@ -137,8 +142,10 @@ class CrazyflieDriver:
         self.setpoint.mode.y            =   firm.modeDisable    # Ensure attitudeDesired.roll/roll is set (see firmware - controller_pid.c)
         self.setpoint.mode.x            =   firm.modeDisable    # Ensure attitudeDesired.roll/roll is set (see firmware - controller_pid.c)
         self.setpoint.mode.yaw          =   firm.modeVelocity
-        
+                
     def enable_position_control(self):
+        
+        self.scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
         
         self.setpoint.mode.z            =   firm.modeAbs
         self.setpoint.mode.y            =   firm.modeVelocity 
@@ -172,11 +179,10 @@ class CrazyflieDriver:
         motorPower_m3 =  cmd_thrust + cmd_roll - cmd_pitch + cmd_yaw
         motorPower_m4 =  cmd_thrust + cmd_roll + cmd_pitch - cmd_yaw
         
-        scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
-        self.m1_motor.setVelocity(- motorPower_m1/scaling)
-        self.m2_motor.setVelocity(  motorPower_m2/scaling)
-        self.m3_motor.setVelocity(- motorPower_m3/scaling)
-        self.m4_motor.setVelocity(  motorPower_m4/scaling)
+        self.m1_motor.setVelocity(- motorPower_m1/self.scaling)
+        self.m2_motor.setVelocity(  motorPower_m2/self.scaling)
+        self.m3_motor.setVelocity(- motorPower_m3/self.scaling)
+        self.m4_motor.setVelocity(  motorPower_m4/self.scaling)
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
