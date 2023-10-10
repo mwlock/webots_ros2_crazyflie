@@ -54,19 +54,9 @@ class CrazyflieDriver:
         self.control    = firm.control_t()
         self.tick       = 100 #this value makes sure that the position controller and attitude controller are always always initiated
         
-    #     # State
-    #     self.__target_twist = Twist()
-    #     self.__vertical_ref = LIFT_HEIGHT
-    #     self.__linear_x_integral = 0
-    #     self.__linear_y_integral = 0
-
-    #     # ROS interface
+        # ROS interface
         rclpy.init(args=None)
         self.__node = rclpy.create_node('crazyflie_sil_pid_driver')
-    #     self.__node.create_subscription(Twist, 'cmd_vel', self.__cmd_vel_callback, 1)
-
-    # def __cmd_vel_callback(self, twist):
-    #     self.__target_twist = twist
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
