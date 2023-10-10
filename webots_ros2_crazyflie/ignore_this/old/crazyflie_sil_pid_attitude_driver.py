@@ -19,6 +19,7 @@ import math
 
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import Twist
 
 import cffirmware as firm
 
@@ -62,7 +63,6 @@ class CrazyflieDriver:
         rclpy.init(args=None)
         self.__node = rclpy.create_node('crazyflie_sil_pid_attitude_driver')
         
-        # Pose publisher (using node namespace)
         self.pose_publisher = self.__node.create_publisher(
             PoseStamped,
             f"{self.robot_name}/pose",
@@ -71,6 +71,12 @@ class CrazyflieDriver:
         self.twist_publisher = self.__node.create_publisher(
             TwistStamped,
             f"{self.robot_name}/twist",
+            1
+        )
+        self.cmd_vel_subscription = self.__node.create_subscription(
+            Twist,
+            f"{self.robot_name}/cmd_vel",
+            self.cmd_vel_callback,
             1
         )
         
@@ -85,7 +91,20 @@ class CrazyflieDriver:
         self.logger = self.__node.get_logger()
         self.logger.debug(f"Robot {self.robot_name} initialized")
         
-    def go_to_pose(self, des_x=0, des_y=0, des_z=1, des_yaw=0):
+        # Initial position
+        self.des_x = 0
+        self.des_y = 0
+        self.des_z = 1
+        self.yaw_desired_degrees = 0
+        
+    def cmd_vel_callback(self, msg:Twist):
+        
+        self.des_x = msg.linear.x
+        self.des_y = msg.linear.y
+        self.des_z = msg.linear.z
+        self.yaw_desired_degrees = msg.angular.z        
+        
+    def go_to_pose(self):
         
         yawDesired = 0
         
@@ -98,19 +117,23 @@ class CrazyflieDriver:
         # self.setpoint.mode.pitch        =   firm.modeVelocity
         # self.setpoint.mode.pitch        =   firm.modeDisable
         
-        # self.setpoint.position.x        = des_x
-        # self.setpoint.position.y        = des_y
-        self.setpoint.position.z        = des_z
+        # self.setpoint.position.x        = self.des_x
+        # self.setpoint.position.y        = self.des_y
+        self.setpoint.position.z        = self.des_z
         
-        self.setpoint.velocity.x = 0
-        self.setpoint.velocity.y = 0
-        self.setpoint.attitudeRate.yaw = math.degrees(8)
+        # Setpoint of 8 rad/s -> 0.5 rad/s
+        rad_conv = 8/0.5        
+        yaw_desired_rad = math.radians(self.yaw_desired_degrees*rad_conv)
+        
+        self.setpoint.velocity.x = self.des_x
+        self.setpoint.velocity.y = self.des_y
+        self.setpoint.attitudeRate.yaw = math.degrees(yaw_desired_rad)
         
         # self.setpoint.attitudeRate.roll     = 0
         # self.setpoint.attitudeRate.pitch    = 0
-        # self.setpoint.attitudeRate.yaw      = 0
+        # self.setpoint.attitude.yaw      = math.degrees(yaw_desired_rad)
         
-        self.setpoint.velocity_body     = True
+        self.setpoint.velocity_body     = False
         
         ## Firmware PID bindings
         firm.controllerPid(
@@ -133,11 +156,11 @@ class CrazyflieDriver:
         motorPower_m3 =  cmd_thrust + cmd_roll - cmd_pitch + cmd_yaw
         motorPower_m4 =  cmd_thrust + cmd_roll + cmd_pitch - cmd_yaw
         
-        scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
-        self.m1_motor.setVelocity(- motorPower_m1/scaling)
-        self.m2_motor.setVelocity(  motorPower_m2/scaling)
-        self.m3_motor.setVelocity(- motorPower_m3/scaling)
-        self.m4_motor.setVelocity(  motorPower_m4/scaling)
+        self.scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
+        self.m1_motor.setVelocity(- motorPower_m1/self.scaling)
+        self.m2_motor.setVelocity(  motorPower_m2/self.scaling)
+        self.m3_motor.setVelocity(- motorPower_m3/self.scaling)
+        self.m4_motor.setVelocity(  motorPower_m4/self.scaling)
 
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)

@@ -25,6 +25,7 @@ import cffirmware as firm
 
 class CrazyflieDriver:
     def init(self, webots_node, properties):
+        
         self.__robot = webots_node.robot
         self.__timestep = int(self.__robot.getBasicTimeStep())
         self.robot_name = self.__robot.getName()
@@ -57,9 +58,9 @@ class CrazyflieDriver:
         self.sensors    = firm.sensorData_t()
         self.setpoint   = firm.setpoint_t()
         self.control    = firm.control_t()
-        self.tick       = 100 #this value makes sure that the position controller and attitude controller are always always initiated
-        
-        self.enable_position_control()
+        self.tick       = 0
+        # self.tick       = 100
+        # self.tick       = 100 #this value makes sure that the position controller and attitude controller are always always initiated
         
         # ROS interface
         rclpy.init(args=None)
@@ -93,7 +94,7 @@ class CrazyflieDriver:
         self.logger.info(f"Robot {self.robot_name} initialized")
         
         # Initial position
-        self.des_x = 0.0
+        self.des_x = 0.1
         self.des_y = 0.0
         self.des_z = 1.0
         self.yaw_desired_degrees = 0.0
@@ -104,10 +105,29 @@ class CrazyflieDriver:
         self.logger.info(f"Asserting control mode")
         assert self.control.controlMode == firm.controlModeLegacy
         
+        self.last_time = self.__robot.getTime()
+        self.last_timer_time = self.__node.get_clock().now().nanoseconds
+        
+        # Create a timer with a callback function which is executed periodically
+        # self.timer = self.__node.create_timer(0.001, self.timer_callback)
+        
+        # while True:
+        #     time_passed = self.__node.get_clock().now().nanoseconds - self.last_timer_time
+        #     self.logger.info(f"Time passed (ms) {time_passed/1000000}")
+        #     self.last_timer_time = self.__node.get_clock().now().nanoseconds
+        
+    # def timer_callback(self):
+        
+    #     time_passed = self.__node.get_clock().now().nanoseconds - self.last_timer_time
+    #     # self.logger.info(f"Time passed (ms) {time_passed/1000000}")
+    #     self.last_timer_time = self.__node.get_clock().now().nanoseconds
         
     def cmd_vel_callback(self, msg:Twist):
         
         self.enable_legacy_control()
+        
+        rad_conv = 8/0.5        
+        degree_conv = math.degrees(rad_conv)
                 
         # Roll, pitch, yawrate, thrust
         roll    = msg.linear.x
@@ -117,26 +137,31 @@ class CrazyflieDriver:
         
         self.setpoint.attitude.roll     = roll
         self.setpoint.attitude.pitch    = pitch
-        self.setpoint.attitudeRate.yaw  = yawrate
+        self.setpoint.attitudeRate.yaw  = yawrate*degree_conv
         self.setpoint.thrust            = thrust
-        
-        self.logger.info(f"Roll: {roll}, Pitch: {pitch}, Yawrate: {yawrate}, Thrust: {thrust}")        
+        # self.logger.info(f"Roll: {roll}, Pitch: {pitch}, Yawrate: {yawrate}, Thrust: {thrust}")        
         
     def enable_hovering(self):
+        
+        self.scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
         
         ## Fill in Setpoints
         self.setpoint.mode.z            =   firm.modeAbs
         self.setpoint.mode.y            =   firm.modeVelocity
         self.setpoint.mode.x            =   firm.modeVelocity
-        self.setpoint.position.z        = self.des_z
+        self.setpoint.mode.yaw          =   firm.modeVelocity
+        self.setpoint.position.z        =   self.des_z
         
-        rad_conv = 8/0.5        
+        rad_conv = 5       
+        # rad_conv = 8/0.5        
         yaw_desired_rad = math.radians(self.yaw_desired_degrees*rad_conv)
         self.setpoint.velocity.x = self.des_x
         self.setpoint.velocity.y = self.des_y
         self.setpoint.attitudeRate.yaw = math.degrees(yaw_desired_rad)
         
     def enable_legacy_control(self):
+        
+        self.scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
         
         self.setpoint.mode.z            =   firm.modeDisable    # Ensure manual position control by ensuring thrust is used (see firmware - controller_pid.c)
         self.setpoint.mode.y            =   firm.modeDisable    # Ensure attitudeDesired.roll/roll is set (see firmware - controller_pid.c)
@@ -151,8 +176,8 @@ class CrazyflieDriver:
         self.setpoint.mode.y            =   firm.modeVelocity 
         self.setpoint.mode.x            =   firm.modeVelocity
         
-        self.setpoint.velocity.x = 0.0
-        self.setpoint.velocity.y = 0.0
+        self.setpoint.velocity.x = 0.01
+        self.setpoint.velocity.y = 0.01
         self.setpoint.position.z = 1
     
         
@@ -179,13 +204,36 @@ class CrazyflieDriver:
         motorPower_m3 =  cmd_thrust + cmd_roll - cmd_pitch + cmd_yaw
         motorPower_m4 =  cmd_thrust + cmd_roll + cmd_pitch - cmd_yaw
         
-        self.m1_motor.setVelocity(- motorPower_m1/self.scaling)
-        self.m2_motor.setVelocity(  motorPower_m2/self.scaling)
-        self.m3_motor.setVelocity(- motorPower_m3/self.scaling)
-        self.m4_motor.setVelocity(  motorPower_m4/self.scaling)
+        m1 = - motorPower_m1/self.scaling
+        m2 =   motorPower_m2/self.scaling
+        m3 = - motorPower_m3/self.scaling
+        m4 =   motorPower_m4/self.scaling
+        
+        self.m1_motor.setVelocity(m1)
+        self.m2_motor.setVelocity(m2)
+        self.m3_motor.setVelocity(m3)
+        self.m4_motor.setVelocity(m4)
+        
+        # Limit decimals to 2
+        # self.logger.info(f"m1: {m1:.2f}, m2: {m2:.2f}, m3: {m3:.2f}, m4: {m4:.2f}")
 
     def step(self):
-        rclpy.spin_once(self.__node, timeout_sec=0)
+        
+        rclpy.spin_once(self.__node, timeout_sec=0)        
+        
+        gps_sampling_period = self.__gps.getSamplingPeriod()
+        self.logger.info(f"GPS sampling period: {gps_sampling_period}")
+                       
+        time_since_last_step = self.__robot.getTime() - self.last_time
+        self.last_time = self.__robot.getTime()
+        
+        # self.logger.info(f"Time since last step: {time_since_last_step}") 
+        # self.logger.info(f"Base timestep: {self.__timestep}")
+
+        # # Convert to milliseconds
+        # time_since_last_step = time_since_last_step./1000000
+        
+        self.logger.info(f"Time since last step: {time_since_last_step}")
         
         ## Get measurements
         x, y, z                                         = self.__gps.getValues()
@@ -237,3 +285,12 @@ class CrazyflieDriver:
         self.twist_publisher.publish(twist)
         
         self.go_to_pose()
+        # self.tick = 100
+        # self.tick += 1
+        self.tick += 1
+        # self.logger.info(f"Tick: {self.tick}")
+        
+        # time_passed = self.__node.get_clock().now().nanoseconds - self.last_timer_time
+        # self.logger.info(f"Time passed (ms) {time_passed/1000000}")
+        # self.last_timer_time = self.__node.get_clock().now().nanoseconds
+        
