@@ -17,6 +17,8 @@
             <gyroName>gyro</gyroName>
         </plugin>
 
-        <plugin type="webots_ros2_crazyflie.crazyflie_sil_pid_legacy.CrazyflieDriver" />
+        <!-- <plugin type="webots_ros2_crazyflie.crazyflie_sil_fpqr_pid_driver.CrazyflieDriver" /> -->
+        <!-- <plugin type="webots_ros2_crazyflie.crazyflie_sil_pid_legacy.CrazyflieDriver" /> -->
+        <plugin type="webots_ros2_crazyflie.crazyflie_sil_pid_driver.CrazyflieDriver" />
     </webots>
 </robot>
